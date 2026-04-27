@@ -327,6 +327,11 @@
         <div class="section-title"><h1>Platform Admin</h1><p>Global platform management.</p></div>
         <div id="adminContent"></div>
       </section>
+
+      <section id="messagesSection" class="section" style="display:none; padding: 3rem; min-height: calc(100vh - 80px);">
+        <div class="section-title"><h1>User Messages</h1><p>Inquiries and contact form submissions.</p></div>
+        <div id="messagesContent" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem;"></div>
+      </section>
     </main>
   </div>
 </div>
@@ -445,11 +450,14 @@
       document.getElementById('registeredLink').style.display = 'none';
       document.getElementById('ticketsLink').style.display = 'none';
       document.getElementById('favoritesLink').style.display = 'none';
-      sidebar.insertAdjacentHTML('beforeend', `<div class="left-nav-link" id="adminLink" onclick="showSection('admin')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span>Admin</span></div>`);
+      sidebar.insertAdjacentHTML('beforeend', `
+        <div class="left-nav-link" id="adminLink" onclick="showSection('admin')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span>Admin</span></div>
+        <div class="left-nav-link" id="messagesLink" onclick="showSection('messages')"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg><span>Messages</span></div>
+      `);
     }
     loadExplore(); loadRegistered(); loadTickets();
     if (user.role === 'proposer') loadOrganized();
-    if (user.role === 'admin') loadAdmin();
+    if (user.role === 'admin') { loadAdmin(); loadMessages(); }
   }
 
   function updateProfileUI(u) {
@@ -481,6 +489,7 @@
       if(link) link.classList.add('active');
     }
     if (id === 'favorites') loadFavorites();
+    if (id === 'messages') loadMessages();
   }
 
   function renderSkeletons() {
@@ -847,9 +856,10 @@
   async function loadAdmin() {
     const c = document.getElementById('adminContent');
     try {
-      const d = await apiFetch('/users/all');
-      const attendees = d.users.filter(u => u.role === 'user');
-      const organizers = d.users.filter(u => u.role === 'proposer');
+      const userData = await apiFetch('/users/all');
+      
+      const attendees = userData.users.filter(u => u.role === 'user');
+      const organizers = userData.users.filter(u => u.role === 'proposer');
       
       const renderUserList = (users) => `
         <div style="display:flex; flex-direction:column; gap:1rem;">
@@ -875,24 +885,86 @@
       `;
       
       c.innerHTML = `
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: start;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 2rem; align-items: start;">
           <div>
             <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem;">
               <div style="width:32px; height:32px; border-radius:8px; background:#f0fdf4; color:#166534; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg></div>
-              <h2 style="font-size:1.4rem; color:var(--text-primary); letter-spacing:-0.02em;">Attendees <span style="font-size:0.9rem; color:var(--text-muted); font-weight:500; margin-left:0.5rem;">(${attendees.length})</span></h2>
+              <h2 style="font-size:1.3rem; color:var(--text-primary); letter-spacing:-0.02em;">Attendees <span style="font-size:0.85rem; color:var(--text-muted); font-weight:500; margin-left:0.5rem;">(${attendees.length})</span></h2>
             </div>
             ${renderUserList(attendees)}
           </div>
           <div>
             <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem;">
               <div style="width:32px; height:32px; border-radius:8px; background:#eff6ff; color:#1e40af; display:flex; align-items:center; justify-content:center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path></svg></div>
-              <h2 style="font-size:1.4rem; color:var(--text-primary); letter-spacing:-0.02em;">Organizers <span style="font-size:0.9rem; color:var(--text-muted); font-weight:500; margin-left:0.5rem;">(${organizers.length})</span></h2>
+              <h2 style="font-size:1.3rem; color:var(--text-primary); letter-spacing:-0.02em;">Organizers <span style="font-size:0.85rem; color:var(--text-muted); font-weight:500; margin-left:0.5rem;">(${organizers.length})</span></h2>
             </div>
             ${renderUserList(organizers)}
           </div>
         </div>
       `;
-    } catch (e) { c.innerHTML = '<p>Error loading users.</p>'; }
+    } catch (e) { c.innerHTML = '<p>Error loading admin data.</p>'; }
+  }
+
+  async function loadMessages() {
+    const c = document.getElementById('messagesContent');
+    console.log('Loading admin messages...');
+    try {
+      const contactData = await apiFetch('/contact');
+      console.log('Contact data received:', contactData);
+      
+      // Handle both { data: [...] } and directly [...] formats just in case
+      const contacts = Array.isArray(contactData) ? contactData : (contactData.data || []);
+      
+      if (!contacts.length) {
+        c.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:5rem; background:var(--bg-card); border-radius:24px; border:1px solid var(--border);">' +
+                      '<div style="font-size:3rem; margin-bottom:1rem;">✉️</div>' +
+                      '<h3 style="color:var(--text-primary); margin-bottom:0.5rem;">No messages yet</h3>' +
+                      '<p style="color:var(--text-muted);">When users contact you, their messages will appear here.</p></div>';
+        return;
+      }
+      
+      c.innerHTML = contacts.map(item => `
+        <div class="contact-admin-card" style="background:var(--bg-card); padding:1.5rem; border-radius:16px; border:1px solid var(--border); transition:0.3s; display:flex; flex-direction:column; gap:1rem;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <div style="font-weight:800; color:var(--text-primary); font-size:1.1rem; letter-spacing:-0.01em;">${escapeHtml(item.name)}</div>
+              <div style="font-size:0.85rem; color:var(--text-muted);">${item.email}</div>
+            </div>
+            <span style="font-size:0.65rem; font-weight:900; color:var(--primary); background:var(--primary-light); padding:0.25rem 0.75rem; border-radius:50px; text-transform:uppercase; border:1px solid var(--primary);">${item.status}</span>
+          </div>
+          <div style="font-weight:700; font-size:0.95rem; color:var(--text-secondary); padding:0.75rem 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+            Subject: ${escapeHtml(item.subject)}
+          </div>
+          <div style="font-size:0.95rem; color:var(--text-primary); line-height:1.6; background:var(--bg-body); padding:1.25rem; border-radius:12px; border:1px solid var(--border); flex:1; white-space: pre-wrap;">${escapeHtml(item.message)}</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">
+              📅 ${new Date(item.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-sm btn-primary" style="border-radius:10px; padding:0.5rem 1rem; font-weight:800; transition:0.2s;" onclick="replyToMessage('${item.email}', '${escapeHtml(item.subject)}')">Reply</button>
+              <button class="btn btn-sm" style="background:#fee2e2; color:#ef4444; border-radius:10px; padding:0.5rem 1rem; border:none; font-weight:800; transition:0.2s;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'" onclick="deleteContactMessage('${item._id}')">Delete</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) { 
+      console.error('Error loading messages:', e);
+      c.innerHTML = `<div style="grid-column: 1/-1; text-align:center; padding:3rem; color:#ef4444; background:#fef2f2; border-radius:16px; border:1px solid #fecaca;">Failed to load messages: ${e.message}</div>`; 
+    }
+  }
+
+  function replyToMessage(email, subject) {
+    const mailSubject = encodeURIComponent(`Re: ${subject} - Eventix Support`);
+    window.location.href = `mailto:${email}?subject=${mailSubject}`;
+  }
+
+  async function deleteContactMessage(id) {
+    if (!confirm('Delete this message?')) return;
+    try { 
+      await apiFetch('/contact/' + id, { method: 'DELETE' }); 
+      showToast('Message deleted', 'success'); 
+      loadMessages(); 
+    } catch (e) { showToast(e.message, 'error'); }
   }
 
   async function verifyUser(id) {
